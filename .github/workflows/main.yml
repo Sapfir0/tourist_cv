@@ -20,7 +20,7 @@ jobs:
         compiler: latexmk
     # Загружаем собранные pdf-файлы
     - name: Upload pdf document
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         # Это значение используется как ключ в хранилище
         name: my_doc
