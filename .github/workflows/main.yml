@@ -1,74 +1,19 @@
-name: Build and deploy latex sources to GitHub Pages
-on: push
+on: [push]
+
 jobs:
-  build:
-    # Базовая ОС, на которой будут исполняться команды. Оставим ubuntu
+  build-resume:
     runs-on: ubuntu-latest
+    name: Create document
     steps:
-    # Необходимо использовать этот action, чтобы получить содержимое репо
-    - uses: actions/checkout@v2
-    # Компилируем документ
-    - name: Build document
-      uses: xu-cheng/latex-action@v2
+    - name: Checkout
+      uses: actions/checkout@v4.2.1
+    - name: Convert to pdf
+      id: convert-to-pdf
+      uses: closoco/pdflatex-action@v1.0.0
       with:
-        root_file: main.tex
-        # Больше параметров в офф. документации
-        working_directory: src/
-        # Аргументы, к которыми запускать компилятор (latexmk)
-        # -jobname=<name> дает возможность поменять имя выходного файла
-        args: -jobname=my_doc -pdf -file-line-error -halt-on-error -interaction=nonstopmode
-        compiler: latexmk
-    # Загружаем собранные pdf-файлы
-    - name: Upload pdf document
-      uses: actions/upload-artifact@v4
+        texFile: ./src/main.tex
+    - name: Store pdf
+      uses: actions/upload-artifact@v4.4.1
       with:
-        # Это значение используется как ключ в хранилище
-        name: my_doc
-        # Путь до собранного pdf. Может содержать “*”, “**”
-        # Здесь это <working_directory>/<jobname>.pdf
-        path: src/my_doc.pdf
-  deploy:
-    runs-on: ubuntu-latest
-    # Деплой будет только на ветке master. Закомментируйте, если не надо
-    if: github.ref == 'refs/heads/main'
-    # Можно зависеть от любого другого job. Порядок выполнения будет подстраиваться.
-    needs: [build]
-    steps:
-      # Это хак, чтобы дергать bash-команды и запоминанать их результат
-      - name: Variables
-        # id используется внутренне: по нему можно ссылаться на результаты из другого step
-        id: vars
-        # echo в таком форматировании позволит впоследствии ссылаться на результаты через ${{ steps.<step_id>.outputs.<variable_name> }}
-        run: |
-          echo "::set-output name=date::$(date +'%Y-%m-%d')"
-          echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          # Тот самый ключ, который мы указывали в upload-artifact
-          name: my_doc
-      - name: Create Release
-        uses: elgohr/Github-Release-Action@v5
-        id: create_release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
-        with:
-          # Берем результат из step с id=vars (см. выше). 
-          # Получим теги вида “my_doc-<дата билда>-<первые 8 символов из sha коммита>
-          tag: my_doc-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha8 }}
-          # Имя, которое будет высвечиваться в релизе
-          title: My Actions document (version ${{ steps.vars.outputs.date }})
-          # Наш релиз не набросок и не пререлиз, так что оба в false
-          draft: false
-          prerelease: false
-      # Прикладываемые файлы надо заливать отдельным step
-      - name: Upload pdf asset
-        uses: softprops/action-gh-release@v2
-        with:
-          # Из предыдущего step с id=create_release генерится upload_url - по нему и надо заливать
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          # Не переходим в папку src, поскольку download-artifacts грузит в текущую директорию
-          asset_path: ./my_doc.pdf
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # Имя, которое будет высвечиваться в релизе
-          files: tourist_cv.pdf
+        name: tourist_cv.pdf
+        path: ./src/tourist_cv.pdf
